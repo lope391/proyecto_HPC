@@ -2,6 +2,7 @@ import nltk
 from nltk.stem.snowball import SnowballStemmer
 from nltk.tokenize import word_tokenize, RegexpTokenizer
 from nltk.corpus import stopwords
+from collections import defaultdict
 
 #nltk.download('punkt')
 #nltk.download('stopwords')
@@ -33,6 +34,13 @@ def palabrasTotales(lista1, lista2):
     all_words = list(set(lista1).union(set(lista2)))
     return all_words
 
+def contPalabras(palabras):
+    contador = defaultdict(float)
+    for pal in palabras:
+        contador[pal] += 1.0 / len(palabras)
+    return dict(contador)
+
+
 texto1 = leerTexto("Gutenberg/ShortStory.txt")
 texto2 = leerTexto("Gutenberg/ShortStory2.txt")
 
@@ -42,12 +50,24 @@ words2 = tokenizer.tokenize(texto2)
 
 words1 = arreglar(words1)
 words2 = arreglar(words2)
+
+listaConjunta = palabrasTotales(words1,words2)
 #words = word_tokenize(raw)
+#
+# print("Palabras originales de la lista 1:")
+# print(words1)
+# print("Palabras originales de la lista 2:")
+# print(words2)
 
-print("Palabras originales de la lista 1:")
-print(words1)
-print("Palabras originales de la lista 2:")
-print(words2)
+#
+# print("Set de palabras totales")
+# print(palabrasTotales(words1,words2))
 
-print("Set de palabras totales")
-print(palabrasTotales(words1,words2))
+dicFrecPal1 = contPalabras(words1)
+dicFrecPal2 = contPalabras(words2)
+
+vecFrecPal1 = [dicFrecPal1.get(word, 0) for word in listaConjunta]
+vecFrecPal2 = [dicFrecPal2.get(word, 0) for word in listaConjunta]
+
+print(vecFrecPal1)
+print(vecFrecPal2)
