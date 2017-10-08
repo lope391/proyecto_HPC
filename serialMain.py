@@ -3,7 +3,7 @@ from nltk.stem.snowball import SnowballStemmer
 from nltk.tokenize import word_tokenize, RegexpTokenizer
 from nltk.corpus import stopwords
 from collections import defaultdict
-
+import numpy as np
 #nltk.download('punkt')
 #nltk.download('stopwords')
 
@@ -40,6 +40,8 @@ def contPalabras(palabras):
         contador[pal] += 1.0 / len(palabras)
     return dict(contador)
 
+def similaridad(vector1, vector2):
+    return np.dot(vector1,vector2) / (np.linalg.norm(vector1) * np.linalg.norm(vector2))
 
 texto1 = leerTexto("Gutenberg/ShortStory.txt")
 texto2 = leerTexto("Gutenberg/ShortStory2.txt")
@@ -71,3 +73,6 @@ vecFrecPal2 = [dicFrecPal2.get(word, 0) for word in listaConjunta]
 
 print(vecFrecPal1)
 print(vecFrecPal2)
+
+print("SIMILARIDAD")
+print(similaridad(vecFrecPal1,vecFrecPal2))
