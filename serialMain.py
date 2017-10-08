@@ -4,6 +4,7 @@ from nltk.tokenize import word_tokenize, RegexpTokenizer
 from nltk.corpus import stopwords
 from collections import defaultdict
 import numpy as np
+import random
 #nltk.download('punkt')
 #nltk.download('stopwords')
 
@@ -11,6 +12,7 @@ import numpy as np
 stemmer = SnowballStemmer("english")
 stWords = set(stopwords.words('english'))
 print(stWords)
+tokenizer = RegexpTokenizer(r'\w+')
 
 def leerTexto(nombre):
     file = open(nombre)
@@ -43,36 +45,24 @@ def contPalabras(palabras):
 def similaridad(vector1, vector2):
     return np.dot(vector1,vector2) / (np.linalg.norm(vector1) * np.linalg.norm(vector2))
 
+def compararTextos(texto1, texto2):
+    words1 = tokenizer.tokenize(texto1)
+    words2 = tokenizer.tokenize(texto2)
+    words1 = arreglar(words1)
+    words2 = arreglar(words2)
+    listaConjunta = palabrasTotales(words1,words2)
+
+    dicFrecPal1 = contPalabras(words1)
+    dicFrecPal2 = contPalabras(words2)
+
+    vecFrecPal1 = [dicFrecPal1.get(word, 0) for word in listaConjunta]
+    vecFrecPal2 = [dicFrecPal2.get(word, 0) for word in listaConjunta]
+
+    return similaridad(vecFrecPal1,vecFrecPal2)
+
+
+
 texto1 = leerTexto("Gutenberg/ShortStory.txt")
 texto2 = leerTexto("Gutenberg/ShortStory2.txt")
 
-tokenizer = RegexpTokenizer(r'\w+')
-words1 = tokenizer.tokenize(texto1)
-words2 = tokenizer.tokenize(texto2)
-
-words1 = arreglar(words1)
-words2 = arreglar(words2)
-
-listaConjunta = palabrasTotales(words1,words2)
-#words = word_tokenize(raw)
-#
-# print("Palabras originales de la lista 1:")
-# print(words1)
-# print("Palabras originales de la lista 2:")
-# print(words2)
-
-#
-# print("Set de palabras totales")
-# print(palabrasTotales(words1,words2))
-
-dicFrecPal1 = contPalabras(words1)
-dicFrecPal2 = contPalabras(words2)
-
-vecFrecPal1 = [dicFrecPal1.get(word, 0) for word in listaConjunta]
-vecFrecPal2 = [dicFrecPal2.get(word, 0) for word in listaConjunta]
-
-print(vecFrecPal1)
-print(vecFrecPal2)
-
-print("SIMILARIDAD")
-print(similaridad(vecFrecPal1,vecFrecPal2))
+print(compararTextos(texto1,texto2))
