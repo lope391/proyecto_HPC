@@ -5,13 +5,14 @@ from nltk.corpus import stopwords
 from collections import defaultdict
 import numpy as np
 import random
+import time
 import glob
 import os
 from mpi4py import MPI
 #nltk.download('punkt')
 #nltk.download('stopwords')
 
-
+start_time = time.time()
 stemmer = SnowballStemmer("english")
 stWords = set(stopwords.words('english'))
 tokenizer = RegexpTokenizer(r'\w+')
@@ -111,7 +112,7 @@ def mostrarResultados(clusters, dicc_textos):
 
 
 
-lista_documentos, lista_titulos = leerCarpeta("Pruebas/*.txt")
+lista_documentos, lista_titulos = leerCarpeta("Gutenberg/*.txt")
 set_palabras = crearSetPalabras(lista_documentos)
 vec_frecuencias = crearVectoresPalabras(set_palabras,lista_documentos)
 
@@ -120,7 +121,7 @@ kmeans = KMeans(2,vec_frecuencias)
 kmeans.iterador()
 
 mostrarResultados(kmeans.clusters, dicc_textos)
-
+print("-------TIEMPO DE EJECUCION: %s SEGUNDOS -------" % (time.time()-start_time))
 
 
 
