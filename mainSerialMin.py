@@ -6,33 +6,20 @@ from collections import defaultdict
 import numpy as np
 import random
 import glob
+import os
+from mpi4py import MPI
 #nltk.download('punkt')
 #nltk.download('stopwords')
 
 
 stemmer = SnowballStemmer("english")
 stWords = set(stopwords.words('english'))
-# print(stWords)
 tokenizer = RegexpTokenizer(r'\w+')
 
-def leerCarpeta(direccion):
-    lista_documentos = []
-    files = glob.glob(direccion)
-    for file in files:
-        with open(file) as f:
-            raw= f.read()
-            texto_arreglado = arreglar(raw)
-            lista_documentos.append(texto_arreglado)
-    return lista_documentos
-
+#####################################################
 
 def arreglar(texto):
     return([stemmer.stem(t) for t in [wrd for wrd in tokenizer.tokenize(texto.lower()) if not wrd in stWords]])
-
-
-def palabrasTotales(lista1, lista2):
-    all_words = list(set(lista1).union(set(lista2)))
-    return all_words
 
 def contPalabras(palabras):
     contador = defaultdict(float)
@@ -43,25 +30,98 @@ def contPalabras(palabras):
 def similaridad(vector1, vector2):
     return np.dot(vector1,vector2) / (np.linalg.norm(vector1) * np.linalg.norm(vector2))
 
-def compararTextos(texto1, texto2):
-    listaConjunta = palabrasTotales(words1,words2)
+##################################################################
 
-    dicFrecPal1 = contPalabras(words1)
-    dicFrecPal2 = contPalabras(words2)
+#Lee archivos de una carpeta
+#Retorna matriz con palabras de cada documento por columna
+def leerCarpeta(direccion):
+    lista_titulos = []
+    lista_documentos_limpios = []
+    for file in glob.glob(direccion):
+        with open(file) as f:
+            lista_documentos_limpios.append(arreglar(f.read()))
+            lista_titulos.append(os.path.basename(f.name))
+    return lista_documentos_limpios, lista_titulos
 
-    vecFrecPal1 = [dicFrecPal1.get(word, 0) for word in listaConjunta]
-    vecFrecPal2 = [dicFrecPal2.get(word, 0) for word in listaConjunta]
+#Retorna el set de palabras conjuntas
+def crearSetPalabras(lista_documentos):
+    return set(word for words in lista_documentos for word in words)
 
-    return similaridad(vecFrecPal1,vecFrecPal2)
+#Retorna vectores de frecuencias de palabras de cada documento en columnas
+#Se toman frecuencias respecto a set de palabras totales
+def crearVectoresPalabras(set_palabras, lista_documentos):
+
+    def vectorize(frequency_dict):
+        return [frequency_dict.get(word, 0) for word in set_palabras]
+    return list(map(vectorize, map(contPalabras, lista_documentos)))
+
+############################################################################
+#Seccion de clustering por K-means
+
+class KMeans(object):
+    #Constructor del objeto K-means
+    def __init__(self, k, vectores):
+        self.centros = random.sample(vectores,k)
+        self.clusters = [[] for c in self.centros]
+        self.vectores = vectores
+    #Relaciona cada documento con el centro mas cercano
+    def relacionar(self):
+        #Saca similiaridad entre cada centro y documentos. Devuelve el mas cercano
+        def centroMasCercano(vector):
+            #simil_vectores =
+            centro = max(self.centros, key=lambda centro: similaridad(centro, vector))
+            return self.centros.index(centro)
+
+        self.clusters = [[] for c in self.centros]
+        for vector in self.vectores:
+            self.clusters[centroMasCercano(vector)].append(vector)
+    #Mueve nodos del centro a promedio de cada nodo de palabra del cluster
+    def moverCentros(self):
+        nuev_centros = []
+        for cluster in self.clusters:
+            nuev_centros.append([average(ci) for ci in zip(*cluster)])
+        if nuev_centros == self.centros:
+            return False
+        self.centros = nuev_centros
+        return True
+
+    def iterador(self):
+        self.relacionar()
+        while self.moverCentros():
+            self.relacionar
+
+def average(sequence):
+    return sum(sequence) / len(sequence)
 
 
-print(leerCarpeta("Gutenberg/*.txt"))
+def mostrarResultados(clusters, dicc_textos):
+    def buscadorDicc(vector):
+        return dicc_textos[str(vector)]
+
+    def buscadorCluster(cluster):
+        return map(buscadorDicc, cluster)
+
+    resultados = map(buscadorCluster, clusters)
+    cont = 1
+    for vec in resultados:
+        print("Cluster " + str(cont))
+        for ele in vec:
+            print(ele)
+        cont += 1
 
 
-# texto1 = leerTexto("Gutenberg/John Ruskin___Modern Painters, Volume 4 (of 5).txt")
-# texto2 = leerTexto("Gutenberg/Lucy Maud Montgomery___Lucy Maud Montgomery Short Stories, 1902 to 1903.txt")
-#
-# print(compararTextos(texto1,texto2))
-#
+
+lista_documentos, lista_titulos = leerCarpeta("Pruebas/*.txt")
+set_palabras = crearSetPalabras(lista_documentos)
+vec_frecuencias = crearVectoresPalabras(set_palabras,lista_documentos)
+
+dicc_textos = dict(zip(map(str, vec_frecuencias),lista_titulos))
+kmeans = KMeans(2,vec_frecuencias)
+kmeans.iterador()
+
+mostrarResultados(kmeans.clusters, dicc_textos)
+
+
+
 
 ############################################################################
