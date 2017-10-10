@@ -5,13 +5,12 @@ from nltk.corpus import stopwords
 from collections import defaultdict
 import numpy as np
 import random
+import time
 import glob
 import os
 from mpi4py import MPI
 #nltk.download('punkt')
 #nltk.download('stopwords')
-
-
 stemmer = SnowballStemmer("english")
 stWords = set(stopwords.words('english'))
 tokenizer = RegexpTokenizer(r'\w+')
@@ -45,15 +44,6 @@ def leerDocumento(file):
         texto_arreglado = arreglar(raw)
     return texto_arreglado
 
-def leerCarpeta(direccion):
-    lista_titulos = []
-    lista_documentos_limpios = []
-    files = glob.glob(direccion)
-    for file in files:
-            texto_arreglado = leerDocumento(file)
-            lista_documentos_limpios.append(texto_arreglado)
-            lista_titulos.append(os.path.basename(f.name))
-    return lista_documentos_limpios, lista_titulos
 
 #Retorna el set de palabras conjuntas
 def crearSetPalabras(lista_documentos):
@@ -105,7 +95,7 @@ class KMeans(object):
     def iterador(self):
         self.relacionar()
         while self.moverCentros():
-            self.relacionar
+            self.relacionar()
 
 def average(sequence):
     return sum(sequence) / len(sequence)
@@ -127,17 +117,104 @@ def mostrarResultados(clusters, dicc_textos):
         cont += 1
 
 
+def enum(*sequential, **named):
+    enums = dict(zip(sequential, range(len(sequential))), **named)
+    return type('Enum', (), enums)
+
+# Define MPI message tags
+tags = enum('READY', 'DONE', 'EXIT', 'START')
+
+
+
 ############################################################################
 def main():
-    lista_documentos, lista_titulos = leerCarpeta("Gutenberg/*.txt")
-    set_palabras = crearSetPalabras(lista_documentos)
-    vec_frecuencias = crearVectoresPalabras(set_palabras,lista_documentos)
 
-    dicc_textos = dict(zip(map(str, vec_frecuencias),lista_titulos))
-    kmeans = KMeans(2,vec_frecuencias)
-    kmeans.iterador()
+    comm = MPI.COMM_WORLD   # get MPI communicator object
+    size = comm.size        # total number of processes
+    rank = comm.rank        # rank of this process
+    status = MPI.Status()   # get MPI status object
 
-    mostrarResultados(kmeans.clusters, dicc_textos)
+    if rank == 0:
+        start_time = time.time()
+        direccion = "Gutenberg/*.txt"
+        lista_titulos = []
+        lista_documentos_limpios = []
+        files = glob.glob(direccion)
+        tareas = range(len(files))
+        ind_tarea = 0
+        num_trabajadores = size - 1
+        trab_cerrados = 0
+        while trab_cerrados < num_trabajadores:
+            datos = comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
+            fuente = status.Get_source()
+            tag = status.Get_tag()
+            if tag == tags.READY:
+                if ind_tarea < len(tareas):
+                    comm.send(files[ind_tarea], dest=fuente, tag=tags.START)
+                    ind_tarea += 1
+                else:
+                    comm.send(None, dest=fuente, tag=tags.EXIT)
+            elif tag == tags.DONE:
+                resultados = datos
+                titl = resultados[1]
+                lista_titulos.append(os.path.basename(titl))
+                lista_documentos_limpios.append(resultados[0])
+                #EJECUTAR APPEND
+            elif tag == tags.EXIT:
+                trab_cerrados += 1
+        #KMEANS Y MOSTRAR RESULTADOS
+
+
+        set_palabras = crearSetPalabras(lista_documentos_limpios)
+        vec_frecuencias = crearVectoresPalabras(set_palabras,lista_documentos_limpios)
+
+        dicc_textos = dict(zip(map(str, vec_frecuencias),lista_titulos))
+        kmeans = KMeans(2,vec_frecuencias)
+        kmeans.iterador()
+
+        mostrarResultados(kmeans.clusters, dicc_textos)
+        print("-------TIEMPO DE EJECUCION: %s SEGUNDOS -------" % (time.time()-start_time))
+
+    else:
+        while True:
+            comm.send(None, dest=0, tag=tags.READY)
+            tarea = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)
+            tag = status.Get_tag()
+            #print("SOY UNA TAREA")
+            #print(tarea)
+            if tag == tags.START:
+                lista = leerDocumento(tarea)
+                result = [lista,tarea]
+                comm.send(result, dest=0, tag=tags.DONE)
+            elif tag == tags.EXIT:
+                break
+
+        comm.send(None, dest=0, tag=tags.EXIT)
+
+
+
+
+
+
+
+
+
+
+    # texto_arreglado = leerDocumento(file)
+    # lista_documentos_limpios_limpios.append(texto_arreglado)
+    # lista_titulos.append(os.path.basename(f.name))
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
