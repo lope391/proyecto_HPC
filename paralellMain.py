@@ -39,14 +39,18 @@ def similaridad(vector1, vector2):
 
 #Lee archivos de una carpeta
 #Retorna matriz con palabras de cada documento por columna
+def leerDocumento(file):
+    with open(file) as f:
+        raw= f.read()
+        texto_arreglado = arreglar(raw)
+    return texto_arreglado
+
 def leerCarpeta(direccion):
     lista_titulos = []
     lista_documentos_limpios = []
     files = glob.glob(direccion)
     for file in files:
-        with open(file) as f:
-            raw= f.read()
-            texto_arreglado = arreglar(raw)
+            texto_arreglado = leerDocumento(file)
             lista_documentos_limpios.append(texto_arreglado)
             lista_titulos.append(os.path.basename(f.name))
     return lista_documentos_limpios, lista_titulos
@@ -123,18 +127,18 @@ def mostrarResultados(clusters, dicc_textos):
         cont += 1
 
 
-
-lista_documentos, lista_titulos = leerCarpeta("Pruebas/*.txt")
-set_palabras = crearSetPalabras(lista_documentos)
-vec_frecuencias = crearVectoresPalabras(set_palabras,lista_documentos)
-
-dicc_textos = dict(zip(map(str, vec_frecuencias),lista_titulos))
-kmeans = KMeans(2,vec_frecuencias)
-kmeans.iterador()
-
-mostrarResultados(kmeans.clusters, dicc_textos)
-
-
-
-
 ############################################################################
+def main():
+    lista_documentos, lista_titulos = leerCarpeta("Gutenberg/*.txt")
+    set_palabras = crearSetPalabras(lista_documentos)
+    vec_frecuencias = crearVectoresPalabras(set_palabras,lista_documentos)
+
+    dicc_textos = dict(zip(map(str, vec_frecuencias),lista_titulos))
+    kmeans = KMeans(2,vec_frecuencias)
+    kmeans.iterador()
+
+    mostrarResultados(kmeans.clusters, dicc_textos)
+
+
+if __name__ == "__main__":
+    main()

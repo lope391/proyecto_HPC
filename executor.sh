@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-EXAMPLE=paralellMain
+PROCESS=paralellMain
 CORES=4
-mpiexec -np ${CORES} python ./${EXAMPLE}*.py
+mpiexec -np ${CORES} python3 ./${PROCESS}*.py
