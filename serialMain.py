@@ -102,7 +102,7 @@ class KMeans(object):
     def iterador(self):
         self.relacionar()
         while self.moverCentros():
-            self.relacionar
+            self.relacionar()
 
 def average(sequence):
     return sum(sequence) / len(sequence)
