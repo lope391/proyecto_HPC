@@ -117,78 +117,80 @@ def mostrarResultados(clusters, dicc_textos):
         cont += 1
 
 
-def enum(*sequential, **named):
-    enums = dict(zip(sequential, range(len(sequential))), **named)
-    return type('Enum', (), enums)
-
-# Define MPI message tags
-tags = enum('READY', 'DONE', 'EXIT', 'START')
-
-
-
 ############################################################################
-def main():
 
-    comm = MPI.COMM_WORLD   # get MPI communicator object
-    size = comm.size        # total number of processes
-    rank = comm.rank        # rank of this process
-    status = MPI.Status()   # get MPI status object
+def main():
+    start_time = time.time()
+
+    comm = MPI.COMM_WORLD
+    size = comm.size
+    rank = comm.rank
+    direccion = "Gutenberg/*.txt"
 
     if rank == 0:
-        start_time = time.time()
-        direccion = "Gutenberg/*.txt"
-        lista_titulos = []
-        lista_documentos_limpios = []
         files = glob.glob(direccion)
-        tareas = range(len(files))
-        ind_tarea = 0
-        num_trabajadores = size - 1
-        trab_cerrados = 0
-        while trab_cerrados < num_trabajadores:
-            datos = comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
-            fuente = status.Get_source()
-            tag = status.Get_tag()
-            if tag == tags.READY:
-                if ind_tarea < len(tareas):
-                    comm.send(files[ind_tarea], dest=fuente, tag=tags.START)
-                    ind_tarea += 1
-                else:
-                    comm.send(None, dest=fuente, tag=tags.EXIT)
-            elif tag == tags.DONE:
-                resultados = datos
-                titl = resultados[1]
-                lista_titulos.append(os.path.basename(titl))
-                lista_documentos_limpios.append(resultados[0])
-                #EJECUTAR APPEND
-            elif tag == tags.EXIT:
-                trab_cerrados += 1
+        scatter_files = [[] for c in range(size)]
 
-        #KMEANS Y MOSTRAR RESULTADOS
-        set_palabras = crearSetPalabras(lista_documentos_limpios)
-        vec_frecuencias = crearVectoresPalabras(set_palabras,lista_documentos_limpios)
+        for p in range(len(files)):
+            i = p%size
+            scatter_files[i].append(files[p])
 
-        dicc_textos = dict(zip(map(str, vec_frecuencias),lista_titulos))
-        kmeans = KMeans(2,vec_frecuencias)
+    else:
+        files = None
+        scatter_files = None
+
+    archivos_tarea = comm.scatter(scatter_files, root=0)
+
+    resultado = [[],[]]
+
+    # for r in range(size):
+    #     if rank == r:
+    #         print(archivos_tarea, " dentro de ", rank)
+
+    lista_docs_local = []
+    lista_titulos_local = []
+
+    for file in archivos_tarea:
+        with open(file) as f:
+            raw = f.read()
+            texto_arreglado = arreglar(raw)
+            lista_docs_local.append(texto_arreglado)
+            lista_titulos_local.append(os.path.basename(f.name))
+
+    archivos_tarea = [lista_docs_local,lista_titulos_local]
+
+    # for r in range(size):
+    #     if rank == r:
+    #         print(len(lista_docs_local), " Documentos dentro de ", rank)
+    #         print(lista_titulos_local, " Titulos dentro de ", rank)
+
+    resultado = comm.gather(archivos_tarea, root=0)
+
+    if rank == 0:
+        #print(resultado)
+        lista_docs_limpios = []
+        lista_titulos = []
+
+        for r in resultado:
+        #    print(r)
+            for doc in r[0]:
+                lista_docs_limpios.append(doc)
+
+            for titl in r[1]:
+                lista_titulos.append(titl)
+
+        set_palabras = crearSetPalabras(lista_docs_limpios)
+        vec_frecuencias = crearVectoresPalabras(set_palabras, lista_docs_limpios)
+
+        dicc_textos = dict(zip(map(str, vec_frecuencias), lista_titulos))
+        kmeans = KMeans(2, vec_frecuencias)
         kmeans.iterador()
 
         mostrarResultados(kmeans.clusters, dicc_textos)
-        print("-------TIEMPO DE EJECUCION: %s SEGUNDOS -------" % (time.time()-start_time))
-
+        print("-------TIEMPO DE EJECUCION: %s SEGUNDOS -------" % (time.time() - start_time))
     else:
-        while True:
-            comm.send(None, dest=0, tag=tags.READY)
-            tarea = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)
-            tag = status.Get_tag()
-            #print("SOY UNA TAREA")
-            #print(tarea)
-            if tag == tags.START:
-                lista = leerDocumento(tarea)
-                result = [lista,tarea]
-                comm.send(result, dest=0, tag=tags.DONE)
-            elif tag == tags.EXIT:
-                break
+        resultado = []
 
-        comm.send(None, dest=0, tag=tags.EXIT)
 
 if __name__ == "__main__":
     main()
