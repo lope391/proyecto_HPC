@@ -71,11 +71,13 @@ def crearVectoresPalabras(set_palabras, lista_documentos):
 #Seccion de clustering por K-means
 
 class KMeans(object):
+
     #Constructor del objeto K-means
     def __init__(self, k, vectores):
         self.centros = random.sample(vectores,k)
         self.clusters = [[] for c in self.centros]
         self.vectores = vectores
+
     #Relaciona cada documento con el centro mas cercano
     def relacionar(self):
         #Saca similiaridad entre cada centro y documentos. Devuelve el mas cercano
@@ -88,6 +90,7 @@ class KMeans(object):
         for vector in self.vectores:
             index = centroMasCercano(vector)
             self.clusters[index].append(vector)
+
     #Mueve nodos del centro a promedio de cada nodo de palabra del cluster
     def moverCentros(self):
         nuev_centros = []
@@ -123,7 +126,8 @@ def mostrarResultados(clusters, dicc_textos):
             print(ele)
         cont += 1
 
-
+########################################################
+#main
 
 lista_documentos, lista_titulos = leerCarpeta("Gutenberg/*.txt")
 set_palabras = crearSetPalabras(lista_documentos)

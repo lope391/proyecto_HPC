@@ -64,11 +64,13 @@ def crearVectoresPalabras(set_palabras, lista_documentos):
 #Seccion de clustering por K-means
 
 class KMeans(object):
+
     #Constructor del objeto K-means
     def __init__(self, k, vectores):
         self.centros = random.sample(vectores,k)
         self.clusters = [[] for c in self.centros]
         self.vectores = vectores
+
     #Relaciona cada documento con el centro mas cercano
     def relacionar(self):
         #Saca similiaridad entre cada centro y documentos. Devuelve el mas cercano
@@ -81,6 +83,7 @@ class KMeans(object):
         for vector in self.vectores:
             index = centroMasCercano(vector)
             self.clusters[index].append(vector)
+
     #Mueve nodos del centro a promedio de cada nodo de palabra del cluster
     def moverCentros(self):
         nuev_centros = []
@@ -134,32 +137,48 @@ def main():
     rank = comm.rank        # rank of this process
     status = MPI.Status()   # get MPI status object
 
+    #El rank 0 esta dedicado a enviar tareas y recibir resultados
+    #El rank 0 es el unico que realiza en k-means
     if rank == 0:
+
         start_time = time.time()
         direccion = "Gutenberg/*.txt"
         lista_titulos = []
         lista_documentos_limpios = []
+
+        #Recoleccion de todos los documentos a evaluar
+        #Asignación de numero de trabajadores
         files = glob.glob(direccion)
         tareas = range(len(files))
         ind_tarea = 0
         num_trabajadores = size - 1
         trab_cerrados = 0
+
+        #Inicio del Task Pull
         while trab_cerrados < num_trabajadores:
+
+            #Master recibe el estado actual de los workers
             datos = comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
             fuente = status.Get_source()
             tag = status.Get_tag()
+
+            #Si en worker envia READY en el tag se le envía un documeto para limpiar
+            #Si no hay mas documentos se envía una señal de terminación
             if tag == tags.READY:
                 if ind_tarea < len(tareas):
                     comm.send(files[ind_tarea], dest=fuente, tag=tags.START)
                     ind_tarea += 1
                 else:
                     comm.send(None, dest=fuente, tag=tags.EXIT)
+
+            #Si recibe el tag DONE extrae los resultados y los guarda localmente
             elif tag == tags.DONE:
                 resultados = datos
                 titl = resultados[1]
                 lista_titulos.append(os.path.basename(titl))
                 lista_documentos_limpios.append(resultados[0])
-                #EJECUTAR APPEND
+
+            #Cuando se vuelve a recibir la señal de terminación cierra el worker
             elif tag == tags.EXIT:
                 trab_cerrados += 1
 
@@ -174,13 +193,13 @@ def main():
         mostrarResultados(kmeans.clusters, dicc_textos)
         print("-------TIEMPO DE EJECUCION: %s SEGUNDOS -------" % (time.time()-start_time))
 
+    #Todos los otros nodos esperan una documento o una señal de terminación
     else:
+
         while True:
             comm.send(None, dest=0, tag=tags.READY)
             tarea = comm.recv(source=0, tag=MPI.ANY_TAG, status=status)
             tag = status.Get_tag()
-            #print("SOY UNA TAREA")
-            #print(tarea)
             if tag == tags.START:
                 lista = leerDocumento(tarea)
                 result = [lista,tarea]

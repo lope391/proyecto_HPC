@@ -64,11 +64,13 @@ def crearVectoresPalabras(set_palabras, lista_documentos):
 #Seccion de clustering por K-means
 
 class KMeans(object):
+
     #Constructor del objeto K-means
     def __init__(self, k, vectores):
         self.centros = random.sample(vectores,k)
         self.clusters = [[] for c in self.centros]
         self.vectores = vectores
+
     #Relaciona cada documento con el centro mas cercano
     def relacionar(self):
         #Saca similiaridad entre cada centro y documentos. Devuelve el mas cercano
@@ -81,6 +83,7 @@ class KMeans(object):
         for vector in self.vectores:
             index = centroMasCercano(vector)
             self.clusters[index].append(vector)
+
     #Mueve nodos del centro a promedio de cada nodo de palabra del cluster
     def moverCentros(self):
         nuev_centros = []
@@ -127,6 +130,7 @@ def main():
     rank = comm.rank
     direccion = "Gutenberg/*.txt"
 
+    # División de los archivos entre procesadores
     if rank == 0:
         files = glob.glob(direccion)
         scatter_files = [[] for c in range(size)]
@@ -139,17 +143,13 @@ def main():
         files = None
         scatter_files = None
 
+    #realizar scatter
     archivos_tarea = comm.scatter(scatter_files, root=0)
-
-    resultado = [[],[]]
-
-    # for r in range(size):
-    #     if rank == r:
-    #         print(archivos_tarea, " dentro de ", rank)
 
     lista_docs_local = []
     lista_titulos_local = []
 
+    #computar archivos locales
     for file in archivos_tarea:
         with open(file) as f:
             raw = f.read()
@@ -159,20 +159,18 @@ def main():
 
     archivos_tarea = [lista_docs_local,lista_titulos_local]
 
-    # for r in range(size):
-    #     if rank == r:
-    #         print(len(lista_docs_local), " Documentos dentro de ", rank)
-    #         print(lista_titulos_local, " Titulos dentro de ", rank)
-
+    #recibir resultado de todas las computaciones
     resultado = comm.gather(archivos_tarea, root=0)
 
+
+    #Solo el main realiza el proceso de k-means
     if rank == 0:
-        #print(resultado)
+
         lista_docs_limpios = []
         lista_titulos = []
 
         for r in resultado:
-        #    print(r)
+
             for doc in r[0]:
                 lista_docs_limpios.append(doc)
 
