@@ -129,7 +129,7 @@ def mostrarResultados(clusters, dicc_textos):
 ########################################################
 #main
 
-lista_documentos, lista_titulos = leerCarpeta("Gutenberg/*.txt")
+lista_documentos, lista_titulos = leerCarpeta("Docs/*.txt")
 set_palabras = crearSetPalabras(lista_documentos)
 vec_frecuencias = crearVectoresPalabras(set_palabras,lista_documentos)
 

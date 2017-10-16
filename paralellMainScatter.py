@@ -128,7 +128,7 @@ def main():
     comm = MPI.COMM_WORLD
     size = comm.size
     rank = comm.rank
-    direccion = "Gutenberg/*.txt"
+    direccion = "Docs/*.txt"
 
     # División de los archivos entre procesadores
     if rank == 0:

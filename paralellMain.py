@@ -142,7 +142,7 @@ def main():
     if rank == 0:
 
         start_time = time.time()
-        direccion = "Gutenberg/*.txt"
+        direccion = "Docs/*.txt"
         lista_titulos = []
         lista_documentos_limpios = []
 
